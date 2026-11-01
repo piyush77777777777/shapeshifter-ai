@@ -1,0 +1,2791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ShapeShifter AI – From a 2D Sketch to a 3D Asset</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="ShapeShifter AI: Turn 2D hand-drawn sketches into solid, watertight 3D models with natural language prompt guidance, real-time WebGL rendering, and OBJ/STL export.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #120a24;
+  --bg-deep: #090414;
+  --panel: #1d1238;
+  --panel-elevated: #241647;
+  --panel-hover: #2d1a57;
+  --line: #3b2a6b;
+  --line-light: #523a94;
+  --tx: #efe9ff;
+  --mu: #a99bd0;
+  --mu-dark: #7a6e9c;
+  --pr: #8b5cf6;
+  --pr-hover: #7c3aed;
+  --pr-glow: rgba(139, 92, 246, 0.45);
+  --ac: #f0abfc;
+  --ac-glow: rgba(240, 171, 252, 0.35);
+  --paper: #f6f1e3;
+  --paper-border: #ded7c3;
+  --green: #4ade80;
+  --green-glow: rgba(74, 222, 128, 0.3);
+  --card-radius: 18px;
+  --btn-radius: 10px;
+  color-scheme: dark;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-family: 'Outfit', 'Poppins', system-ui, sans-serif;
+  background-color: var(--bg);
+  color: var(--tx);
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100vh;
+  background: 
+    radial-gradient(circle at 50% -10%, #4c2299 0%, transparent 55%),
+    radial-gradient(circle at 85% 30%, #301463 0%, transparent 45%),
+    radial-gradient(circle at 15% 75%, #2a1157 0%, transparent 50%),
+    var(--bg);
+  background-attachment: fixed;
+  color: var(--tx);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Background Ambient Grid Glow */
+.ambient-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  background-image: 
+    radial-gradient(circle at 50% 20%, rgba(139, 92, 246, 0.12) 0%, transparent 50%),
+    linear-gradient(rgba(59, 42, 107, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 42, 107, 0.08) 1px, transparent 1px);
+  background-size: 100% 100%, 48px 48px, 48px 48px;
+}
+
+/* App Wrapper */
+.app-container {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ================= NAV BAR ================= */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  background: rgba(18, 10, 36, 0.82);
+  border-bottom: 1px solid rgba(59, 42, 107, 0.6);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.3s ease;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--tx);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.brand-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--pr) 0%, var(--ac) 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px var(--pr-glow);
+  color: #fff;
+  transition: transform 0.3s ease;
+}
+.brand:hover .brand-icon {
+  transform: rotate(8deg) scale(1.05);
+}
+
+.brand span {
+  color: var(--pr);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--mu);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s ease;
+  position: relative;
+}
+.nav-links a:hover {
+  color: var(--tx);
+}
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--ac);
+  transition: width 0.2s ease;
+  border-radius: 2px;
+}
+.nav-links a:hover::after {
+  width: 100%;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Free Trial Button */
+.btn-trial {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #d946ef 100%);
+  color: #ffffff !important;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 20px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-trial::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  transition: 0.6s;
+}
+.btn-trial:hover::before {
+  left: 100%;
+}
+
+.btn-trial:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 28px rgba(217, 70, 239, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+}
+
+.btn-trial:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.pulse-badge {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 8px #ffffff;
+  animation: pulse-dot 1.8s infinite;
+}
+
+@keyframes pulse-dot {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  50% { transform: scale(1.25); opacity: 1; box-shadow: 0 0 12px #fff; }
+  100% { transform: scale(0.85); opacity: 0.7; }
+}
+
+/* ================= LANDING PAGE SECTIONS ================= */
+#landing-view {
+  display: block;
+}
+
+.hero-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 64px 24px 40px;
+  text-align: center;
+  position: relative;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 99px;
+  color: var(--ac);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin-bottom: 24px;
+  backdrop-filter: blur(10px);
+}
+
+.hero-title {
+  font-size: clamp(36px, 5.8vw, 68px);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  max-width: 960px;
+  margin: 0 auto 20px;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #ffffff 20%, #c4b5fd 60%, var(--ac) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+  font-size: clamp(16px, 2vw, 20px);
+  color: var(--mu);
+  max-width: 720px;
+  margin: 0 auto 36px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.hero-cta-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 50px;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(36, 22, 71, 0.6);
+  border: 1px solid var(--line);
+  color: var(--tx);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 99px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(12px);
+}
+.btn-secondary:hover {
+  background: var(--panel-hover);
+  border-color: var(--pr);
+  transform: translateY(-2px);
+}
+
+/* Hero Stats Banner */
+.stats-banner {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  max-width: 900px;
+  margin: 0 auto 60px;
+  padding: 20px 24px;
+  background: rgba(29, 18, 56, 0.65);
+  border: 1px solid var(--line);
+  border-radius: var(--card-radius);
+  backdrop-filter: blur(16px);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-right: 1px solid rgba(59, 42, 107, 0.4);
+}
+.stat-item:last-child {
+  border-right: none;
+}
+
+.stat-val {
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.stat-val span {
+  color: var(--ac);
+}
+.stat-lbl {
+  font-size: 12px;
+  color: var(--mu);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+/* Interactive Split Preview Showcase */
+.preview-showcase {
+  max-width: 1080px;
+  margin: 0 auto 90px;
+  position: relative;
+}
+
+.preview-card {
+  background: linear-gradient(180deg, rgba(36, 22, 71, 0.8) 0%, rgba(20, 11, 40, 0.95) 100%);
+  border: 1px solid var(--line-light);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(139, 92, 246, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.preview-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(59, 42, 107, 0.6);
+  margin-bottom: 20px;
+}
+
+.window-dots {
+  display: flex;
+  gap: 8px;
+}
+.dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+.dot.red { background: #ff5f56; }
+.dot.yellow { background: #ffbd2e; }
+.dot.green { background: #27c93f; }
+
+.preview-title-badge {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mu);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.preview-split {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 20px;
+  align-items: center;
+}
+
+.preview-side {
+  background: rgba(13, 7, 25, 0.7);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  position: relative;
+  text-align: left;
+}
+
+.preview-side-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.preview-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mu);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.preview-badge-status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--ac);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.preview-canvas-box {
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--paper);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.svg-sketch-illus {
+  width: 80%;
+  height: 80%;
+}
+
+.preview-3d-box {
+  width: 100%;
+  aspect-ratio: 1;
+  background: #0d0719;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(59, 42, 107, 0.6);
+}
+
+.floating-3d-cube {
+  width: 140px;
+  height: 140px;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: rotate-3d-hero 16s infinite linear;
+}
+
+@keyframes rotate-3d-hero {
+  0% { transform: rotateX(-20deg) rotateY(0deg); }
+  100% { transform: rotateX(-20deg) rotateY(360deg); }
+}
+
+.cube-face {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.75), rgba(240, 171, 252, 0.55));
+  border: 2px solid rgba(240, 171, 252, 0.85);
+  box-shadow: 0 0 25px rgba(139, 92, 246, 0.5);
+}
+.cube-face.front  { transform: translateZ(70px); }
+.cube-face.back   { transform: rotateY(180deg) translateZ(70px); }
+.cube-face.right  { transform: rotateY(90deg) translateZ(70px); }
+.cube-face.left   { transform: rotateY(-90deg) translateZ(70px); }
+.cube-face.top    { transform: rotateX(90deg) translateZ(70px); }
+.cube-face.bottom { transform: rotateX(-90deg) translateZ(70px); }
+
+.preview-split-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--ac);
+}
+.arrow-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--panel-elevated);
+  border: 1px solid var(--line-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 15px var(--pr-glow);
+  animation: bounce-right 2s infinite ease-in-out;
+}
+
+@keyframes bounce-right {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(6px); }
+}
+
+.arrow-label {
+  font-size: 11px;
+  color: var(--mu);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Feature Section */
+.section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 80px 24px;
+}
+
+.section-header {
+  text-align: center;
+  max-width: 740px;
+  margin: 0 auto 54px;
+}
+
+.section-tag {
+  color: var(--ac);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+  display: inline-block;
+}
+
+.section-title {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 14px;
+}
+
+.section-desc {
+  color: var(--mu);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.feat-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--card-radius);
+  padding: 28px;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+.feat-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--pr);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35), 0 0 20px rgba(139, 92, 246, 0.15);
+}
+
+.feat-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ac);
+  margin-bottom: 20px;
+}
+
+.feat-card h3 {
+  font-size: 19px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--tx);
+}
+
+.feat-card p {
+  color: var(--mu);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* How It Works Pipeline */
+.pipeline-steps {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  position: relative;
+}
+
+.step-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px 18px;
+  text-align: center;
+  position: relative;
+  transition: all 0.2s ease;
+}
+.step-card:hover {
+  border-color: var(--ac);
+  background: var(--panel-elevated);
+}
+
+.step-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--pr), var(--ac));
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+  box-shadow: 0 0 12px var(--pr-glow);
+}
+
+.step-card h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--tx);
+}
+
+.step-card p {
+  font-size: 12px;
+  color: var(--mu);
+  line-height: 1.5;
+}
+
+/* Examples Showcase Gallery */
+.examples-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.example-box {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--card-radius);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.25s ease;
+  cursor: pointer;
+  overflow: hidden;
+}
+.example-box:hover {
+  border-color: var(--pr);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45), 0 0 20px var(--pr-glow);
+}
+
+.example-thumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  background: #0d0719;
+  border: 1px solid rgba(59, 42, 107, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.example-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.example-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--ac);
+}
+
+.example-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--tx);
+}
+
+.example-prompt-preview {
+  font-size: 13px;
+  color: var(--mu);
+  font-style: italic;
+  margin-bottom: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(59, 42, 107, 0.4);
+}
+
+.btn-open-example {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--panel-elevated);
+  border: 1px solid var(--line);
+  color: var(--tx);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: var(--btn-radius);
+  transition: all 0.2s ease;
+}
+.example-box:hover .btn-open-example {
+  background: var(--pr);
+  border-color: var(--pr);
+}
+
+/* Call to Action Banner */
+.cta-banner {
+  max-width: 1080px;
+  margin: 60px auto 100px;
+  padding: 56px 40px;
+  background: linear-gradient(135deg, rgba(59, 29, 122, 0.7) 0%, rgba(29, 18, 56, 0.95) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  border-radius: 28px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 50px rgba(139, 92, 246, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-banner h2 {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 700;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+}
+
+.cta-banner p {
+  color: var(--mu);
+  font-size: 17px;
+  max-width: 600px;
+  margin: 0 auto 32px;
+}
+
+/* Footer */
+footer {
+  border-top: 1px solid var(--line);
+  padding: 40px 24px;
+  background: rgba(13, 7, 25, 0.8);
+  margin-top: auto;
+}
+
+.footer-content {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.footer-brand {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--mu);
+}
+.footer-brand span {
+  color: var(--pr);
+}
+
+.footer-links {
+  display: flex;
+  gap: 20px;
+  list-style: none;
+}
+
+.footer-links a {
+  color: var(--mu);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.2s;
+}
+.footer-links a:hover {
+  color: var(--tx);
+}
+
+/* ================= 3D STUDIO APP (FREE TRIAL MODE) ================= */
+#studio-view {
+  display: none;
+  padding: 20px 24px 60px;
+  max-width: 1240px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.studio-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.studio-title-area {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.btn-back-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--mu);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 14px;
+  border-radius: var(--btn-radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+.btn-back-home:hover {
+  color: var(--tx);
+  border-color: var(--pr);
+  background: var(--panel-hover);
+}
+
+.studio-badge-free {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(74, 222, 128, 0.15);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 99px;
+}
+
+/* Pipeline Step Tracker */
+.steps-container {
+  margin-bottom: 24px;
+}
+
+.steps {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.st {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  color: var(--mu);
+  background: rgba(29, 18, 56, 0.6);
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.st.on {
+  border-color: var(--pr);
+  color: var(--tx);
+  background: rgba(139, 92, 246, 0.25);
+  box-shadow: 0 0 14px rgba(139, 92, 246, 0.3);
+  font-weight: 600;
+}
+
+.st.done {
+  color: var(--green);
+  border-color: rgba(74, 222, 128, 0.45);
+  background: rgba(74, 222, 128, 0.1);
+}
+
+.progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(59, 42, 107, 0.4);
+  border-radius: 99px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(59, 42, 107, 0.6);
+}
+
+.bar {
+  height: 100%;
+  width: 100%;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--pr) 0%, var(--ac) 100%);
+  border-radius: 99px;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 12px var(--ac-glow);
+}
+
+/* Studio Work Grid */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media(max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--card-radius);
+  padding: 20px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(59, 42, 107, 0.5);
+}
+
+.card h3 {
+  font-size: 14px;
+  color: var(--tx);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--mu);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+/* Canvas Viewports */
+.canvas-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+}
+
+#sk {
+  background: var(--paper);
+  touch-action: none;
+  cursor: crosshair;
+}
+
+#view {
+  background: #0d0719;
+  touch-action: none;
+  cursor: grab;
+}
+
+/* Controls & Buttons */
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.examples-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+button, .btn {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--line);
+  background: #241647;
+  color: var(--tx);
+  padding: 8px 14px;
+  border-radius: var(--btn-radius);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+button:hover, .btn:hover {
+  border-color: var(--pr);
+  background: #2e1d59;
+  transform: translateY(-1px);
+}
+
+button.pr {
+  background: linear-gradient(135deg, var(--pr) 0%, #9333ea 100%);
+  border-color: rgba(255, 255, 255, 0.2);
+  font-weight: 600;
+  box-shadow: 0 0 16px var(--pr-glow);
+  padding: 12px 20px;
+  font-size: 14px;
+  width: 100%;
+}
+
+button.pr:hover {
+  background: linear-gradient(135deg, #9333ea 0%, #a855f7 100%);
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.5);
+  transform: translateY(-2px);
+}
+
+button:disabled, .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Preset Button Pills */
+.btn-pill {
+  padding: 5px 11px;
+  font-size: 12px;
+  border-radius: 99px;
+  background: rgba(36, 22, 71, 0.7);
+  border: 1px solid rgba(59, 42, 107, 0.7);
+  color: var(--mu);
+}
+.btn-pill:hover {
+  color: var(--tx);
+  border-color: var(--ac);
+  background: rgba(139, 92, 246, 0.2);
+}
+
+/* Inputs & Form Elements */
+.input-group {
+  margin-top: 14px;
+  width: 100%;
+}
+
+.input-label {
+  display: block;
+  font-size: 12px;
+  color: var(--mu);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+input[type=text] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  padding: 10px 14px;
+  border-radius: var(--btn-radius);
+  border: 1px solid var(--line);
+  background: #120a24;
+  color: var(--tx);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+input[type=text]:focus {
+  border-color: var(--pr);
+  box-shadow: 0 0 12px var(--pr-glow);
+}
+
+/* Parametric Sliders Bar */
+.params-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+  background: rgba(18, 10, 36, 0.5);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(59, 42, 107, 0.5);
+}
+
+@media(max-width: 540px) {
+  .params-bar {
+    grid-template-columns: 1fr;
+  }
+}
+
+.param-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.param-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mu);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.param-val {
+  color: var(--ac);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 5px;
+  background: var(--line);
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--pr);
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 8px var(--pr-glow);
+  transition: transform 0.15s ease;
+}
+input[type=range]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+select {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #120a24;
+  color: var(--tx);
+  outline: none;
+  cursor: pointer;
+}
+select:focus {
+  border-color: var(--pr);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--mu);
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.4;
+}
+
+#msg {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  color: var(--tx);
+  margin-top: 12px;
+  font-size: 12px;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+}
+
+/* 3D Action Tools Toolbar */
+.viewer-floating-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.export-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn-export {
+  background: linear-gradient(135deg, #2a1a52 0%, #361f6e 100%);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  font-weight: 600;
+  padding: 10px 14px;
+  color: #ffffff;
+}
+.btn-export:hover {
+  border-color: var(--ac);
+  box-shadow: 0 0 14px var(--pr-glow);
+}
+
+/* Studio Use Cases Cards */
+.use {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.use div {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 13px;
+  color: var(--mu);
+  transition: all 0.2s ease;
+}
+.use div:hover {
+  border-color: var(--pr);
+  transform: translateY(-2px);
+}
+
+.use b {
+  color: var(--tx);
+  display: block;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 12px 18px;
+  }
+  .nav-links {
+    display: none;
+  }
+  .features-grid, .pipeline-steps, .examples-gallery {
+    grid-template-columns: 1fr;
+  }
+  .stats-banner {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .stat-item:nth-child(2) {
+    border-right: none;
+  }
+  .preview-split {
+    grid-template-columns: 1fr;
+  }
+  .preview-split-arrow {
+    transform: rotate(90deg);
+    margin: 10px 0;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="ambient-glow"></div>
+
+<div class="app-container">
+
+  <!-- ================= TOP NAVIGATION ================= -->
+  <nav class="navbar">
+    <a href="#" class="brand" id="brand-link">
+      <div class="brand-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+          <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+      </div>
+      <div>Shape<span>Shifter</span> AI</div>
+    </a>
+
+    <ul class="nav-links" id="main-nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#pipeline">How It Works</a></li>
+      <li><a href="#examples">Showcase</a></li>
+      <li><a href="#usecases">Applications</a></li>
+    </ul>
+
+    <div class="nav-actions">
+      <!-- The Free Trial CTA: The ONLY path to enter the interactive 3D studio! -->
+      <button class="btn-trial" id="btn-enter-trial">
+        <span class="pulse-badge"></span>
+        <span>Free Trial</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ================= LANDING PAGE VIEW ================= -->
+  <main id="landing-view">
+    <!-- HERO SECTION -->
+    <section class="hero-section">
+      <div class="hero-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+        Next-Gen 2D Sketch to 3D Geometry Synthesis
+      </div>
+
+      <h1 class="hero-title">
+        From a <span class="gradient-text">2D Sketch</span> to a Watertight <span class="gradient-text">3D Asset</span>
+      </h1>
+
+      <p class="hero-subtitle">
+        Draw with your mouse or stylus, describe materials with natural language prompts, and watch ShapeShifter AI synthesize solid, production-ready 3D models right inside your browser in real-time.
+      </p>
+
+      <div class="hero-cta-group">
+        <button class="btn-trial" id="hero-btn-trial" style="padding: 14px 32px; font-size: 16px;">
+          <span class="pulse-badge"></span>
+          <span>Start Free Trial</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+
+        <a href="#examples" class="btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polygon points="10 8 16 12 10 16 10 8"></polygon>
+          </svg>
+          <span>Explore Interactive Presets</span>
+        </a>
+      </div>
+
+      <!-- Live Stats Ribbon -->
+      <div class="stats-banner">
+        <div class="stat-item">
+          <div class="stat-val">&lt; <span>0.4s</span></div>
+          <div class="stat-lbl">In-Browser Synthesis</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-val"><span>100%</span></div>
+          <div class="stat-lbl">Private &amp; Client-Side</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-val">OBJ <span>+ STL</span></div>
+          <div class="stat-lbl">Production Ready Formats</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-val">Zero <span>Install</span></div>
+          <div class="stat-lbl">WebGL Three.js Native</div>
+        </div>
+      </div>
+
+      <!-- Interactive Split Preview Showcase -->
+      <div class="preview-showcase">
+        <div class="preview-card">
+          <div class="preview-topbar">
+            <div class="window-dots">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
+            </div>
+            <div class="preview-title-badge">Interactive Transformation Pipeline</div>
+            <div style="font-size: 11px; color: var(--mu); font-family: 'JetBrains Mono', monospace;">ShapeShifter v2.0</div>
+          </div>
+
+          <div class="preview-split">
+            <!-- Left: 2D Sketch Preview -->
+            <div class="preview-side">
+              <div class="preview-side-header">
+                <span class="preview-label">Input Sketch</span>
+                <span class="preview-badge-status">Hand-Drawn 2D</span>
+              </div>
+              <div class="preview-canvas-box">
+                <svg class="svg-sketch-illus" viewBox="0 0 200 200">
+                  <!-- House Illustration -->
+                  <path d="M40,110 L40,180 L160,180 L160,110" fill="none" stroke="#222" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+                  <polygon points="30,115 100,45 170,115" fill="#fde8e8" stroke="#222" stroke-width="5" stroke-linejoin="round" />
+                  <path d="M85,180 L85,135 L115,135 L115,180" fill="#e8d5b5" stroke="#222" stroke-width="4" stroke-linejoin="round" />
+                  <rect x="130" y="125" width="22" height="24" rx="2" fill="#cbe8ff" stroke="#222" stroke-width="4" />
+                </svg>
+              </div>
+              <div style="margin-top: 10px; font-size: 12px; color: var(--mu); font-style: italic;">
+                "A small cottage with a red roof and a wooden door"
+              </div>
+            </div>
+
+            <!-- Center Transformation Arrow -->
+            <div class="preview-split-arrow">
+              <div class="arrow-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14"></path>
+                  <path d="M12 5l7 7-7 7"></path>
+                </svg>
+              </div>
+              <div class="arrow-label">Synthesize</div>
+            </div>
+
+            <!-- Right: 3D Watertight Asset -->
+            <div class="preview-side">
+              <div class="preview-side-header">
+                <span class="preview-label">Output 3D Asset</span>
+                <span class="preview-badge-status" style="background: rgba(74, 222, 128, 0.15); color: var(--green); border-color: rgba(74, 222, 128, 0.3);">Watertight Solid</span>
+              </div>
+              <div class="preview-3d-box">
+                <div class="floating-3d-cube">
+                  <div class="cube-face front"></div>
+                  <div class="cube-face back"></div>
+                  <div class="cube-face right"></div>
+                  <div class="cube-face left"></div>
+                  <div class="cube-face top"></div>
+                  <div class="cube-face bottom"></div>
+                </div>
+                <div style="position: absolute; bottom: 8px; font-size: 11px; color: var(--mu); background: rgba(0,0,0,0.5); padding: 3px 8px; border-radius: 99px;">
+                  360° Real-time 3D Mesh
+                </div>
+              </div>
+              <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; color: var(--green); font-weight: 500;">✓ STL &amp; OBJ Ready</span>
+                <span style="font-size: 11px; color: var(--mu); font-family: 'JetBrains Mono', monospace;">5.2k Verts</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES SECTION -->
+    <section class="section" id="features">
+      <div class="section-header">
+        <span class="section-tag">Core Capabilities</span>
+        <h2 class="section-title">Designed for Instant 3D Synthesis</h2>
+        <p class="section-desc">Experience deterministic client-side geometry extraction paired with semantic prompt color mapping. No heavy software, no GPU waiting queues.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feat-card">
+          <div class="feat-icon-wrap">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+          </div>
+          <h3>Dual-Pass Spatial Distance Field</h3>
+          <p>Converts freehand outlines into high-precision distance-from-edge topological fields, creating smooth volumetric curved surfaces with zero polygon tearing.</p>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-icon-wrap">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+            </svg>
+          </div>
+          <h3>Semantic Natural Language Colors</h3>
+          <p>Describe your asset naturally ("red roof", "wooden door", "blue armor", "golden lamp"). The NLP parser extracts material accents and paints vertex geometry on the fly.</p>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-icon-wrap">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </div>
+          <h3>Parametric Sculpting Controls</h3>
+          <p>Tweak physical model thickness, laplacian smoothing passes, and style modes (Puffy organic, Flat mechanical, or Sharp faceted) with instant 60fps mesh updates.</p>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-icon-wrap">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </div>
+          <h3>Production OBJ &amp; STL Export</h3>
+          <p>One-click direct export to industry-standard <code>.OBJ</code> files with embedded RGB vertex colors and watertight <code>.STL</code> files verified for direct 3D printing slicing.</p>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-icon-wrap">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+          </div>
+          <h3>Full 360° Real-Time Orbit &amp; Wireframe</h3>
+          <p>Inspect every polygon with smooth mouse orbit, pinch zoom on touch screens, auto-rotate turntable view, and transparent wireframe debugging overlays.</p>
+        </div>
+
+        <div class="feat-card">
+          <div class="feat-icon-wrap">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </div>
+          <h3>100% In-Browser Privacy</h3>
+          <p>All computational geometry runs locally inside your browser via WebGL and WebAssembly standards. No sketches or private design concepts ever leave your device.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PIPELINE / HOW IT WORKS -->
+    <section class="section" id="pipeline">
+      <div class="section-header">
+        <span class="section-tag">Architecture &amp; Flow</span>
+        <h2 class="section-title">The 5-Stage Synthesis Pipeline</h2>
+        <p class="section-desc">ShapeShifter AI translates your 2D stroke raster into a watertight 3D mesh through five coordinated algorithmic steps.</p>
+      </div>
+
+      <div class="pipeline-steps">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <h4>Draw / Upload</h4>
+          <p>480x480 raster canvas captures dark stroke boundaries or imported sketches.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <h4>Text Prompt</h4>
+          <p>NLP analyzer scans for color words (red, blue, wood, gold) and target anatomy.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <h4>Shape Analysis</h4>
+          <p>Morphological dilation &amp; exterior queue flood-fill isolate watertight bodies.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">4</div>
+          <h4>Image-to-3D</h4>
+          <p>Distance transform builds front/back height fields with quad side walls.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">5</div>
+          <h4>Preview &amp; Export</h4>
+          <p>Three.js WebGL lighting, orbit inspection, and instant OBJ/STL file export.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SHOWCASE PRESETS GALLERY -->
+    <section class="section" id="examples">
+      <div class="section-header">
+        <span class="section-tag">Interactive Presets</span>
+        <h2 class="section-title">Explore Curated 3D Assets</h2>
+        <p class="section-desc">Click any of our 6 curated presets to load the hand-drawn sketch and prompt into the ShapeShifter AI Studio for instant real-time synthesis.</p>
+      </div>
+
+      <div class="examples-gallery">
+        <!-- Preset 1: House -->
+        <div class="example-box" onclick="launchWithExample('ex1')">
+          <div class="example-thumb">
+            <svg viewBox="0 0 320 160" width="100%" height="100%">
+              <defs>
+                <linearGradient id="bgH" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#1f143d"/>
+                  <stop offset="100%" stop-color="#0e081f"/>
+                </linearGradient>
+                <linearGradient id="roofG" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#ef4444"/>
+                  <stop offset="100%" stop-color="#991b1b"/>
+                </linearGradient>
+                <linearGradient id="wallG" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#8b5cf6"/>
+                  <stop offset="100%" stop-color="#581c87"/>
+                </linearGradient>
+              </defs>
+              <rect width="320" height="160" rx="12" fill="url(#bgH)" />
+              <circle cx="240" cy="50" r="35" fill="rgba(240, 171, 252, 0.15)" filter="blur(10px)"/>
+              <!-- 2D sketch sketch line style -->
+              <g transform="translate(40, 30)">
+                <rect x="0" y="30" width="80" height="60" rx="2" fill="none" stroke="#a99bd0" stroke-width="2.5" stroke-dasharray="3,3" />
+                <polygon points="-10,30 40,-5 90,30" fill="none" stroke="#f0abfc" stroke-width="2.5" />
+                <rect x="30" y="55" width="20" height="35" fill="none" stroke="#a99bd0" stroke-width="2" />
+                <rect x="55" y="40" width="16" height="18" fill="none" stroke="#a99bd0" stroke-width="2" />
+                <text x="40" y="105" fill="#a99bd0" font-size="9" text-anchor="middle" font-family="'JetBrains Mono',monospace">2D Sketch</text>
+              </g>
+              <!-- Arrow -->
+              <path d="M150,75 L170,75 M165,70 L170,75 L165,80" stroke="#f0abfc" stroke-width="2" stroke-linecap="round"/>
+              <!-- 3D rendered style -->
+              <g transform="translate(195, 25)">
+                <!-- 3D Isometric Cottage -->
+                <polygon points="40,15 80,35 40,55 0,35" fill="url(#roofG)" stroke="#f87171" stroke-width="1.5"/>
+                <polygon points="80,35 80,85 40,105 40,55" fill="#7f1d1d" />
+                <polygon points="0,35 40,55 40,105 0,85" fill="#991b1b" />
+                <polygon points="0,50 40,70 40,110 0,90" fill="url(#wallG)" opacity="0.95"/>
+                <polygon points="40,70 80,50 80,90 40,110" fill="#4c1d95" opacity="0.95"/>
+                <!-- Wooden Door -->
+                <polygon points="15,80 25,85 25,102 15,97" fill="#854d0e"/>
+                <text x="40" y="125" fill="#4ade80" font-size="9" text-anchor="middle" font-family="'JetBrains Mono',monospace">3D Solid Mesh</text>
+              </g>
+            </svg>
+          </div>
+          <div class="example-box-header">
+            <span class="example-name">Cottage House</span>
+            <span class="example-tag">Architecture</span>
+          </div>
+          <div class="example-prompt-preview">"A small cottage with a red roof and a wooden door"</div>
+          <p style="font-size: 13px; color: var(--mu); margin-bottom: 16px;">Multi-component structure demonstrating dual-material separation with pitch gable roof and recessed timber doorway.</p>
+          <div class="btn-open-example">
+            <span>Test in Studio</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </div>
+        </div>
+
+        <!-- Preset 2: Chair -->
+        <div class="example-box" onclick="launchWithExample('ex2')">
+          <div class="example-thumb">
+            <svg viewBox="0 0 320 160" width="100%" height="100%">
+              <defs>
+                <linearGradient id="cushionG" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#ef4444"/>
+                  <stop offset="100%" stop-color="#b91c1c"/>
+                </linearGradient>
+                <linearGradient id="woodG" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#b45309"/>
+                  <stop offset="100%" stop-color="#78350f"/>
+                </linearGradient>
+              </defs>
+              <rect width="320" height="160" rx="12" fill="#170f30" />
+              <!-- Sketch side -->
+              <g transform="translate(35, 25)">
+                <rect x="15" y="5" width="45" height="40" rx="2" fill="none" stroke="#a99bd0" stroke-width="2" stroke-dasharray="3,3"/>
+                <rect x="10" y="45" width="55" height="12" rx="2" fill="none" stroke="#f0abfc" stroke-width="2"/>
+                <line x1="15" y1="57" x2="15" y2="95" stroke="#a99bd0" stroke-width="2.5" />
+                <line x1="60" y1="57" x2="60" y2="95" stroke="#a99bd0" stroke-width="2.5" />
+                <text x="37" y="112" fill="#a99bd0" font-size="9" text-anchor="middle" font-family="'JetBrains Mono',monospace">2D Sketch</text>
+              </g>
+              <path d="M150,75 L170,75 M165,70 L170,75 L165,80" stroke="#f0abfc" stroke-width="2" stroke-linecap="round"/>
+              <!-- 3D chair -->
+              <g transform="translate(200, 25)">
+                <polygon points="35,10 65,22 65,55 35,43" fill="url(#woodG)" />
+                <polygon points="10,22 35,10 35,43 10,55" fill="#92400e" />
+                <!-- Cushion -->
+                <polygon points="5,55 45,40 75,55 35,70" fill="url(#cushionG)" />
+                <polygon points="5,55 35,70 35,78 5,63" fill="#991b1b" />
+                <polygon points="75,55 35,70 35,78 75,63" fill="#7f1d1d" />
+                <!-- Legs -->
+                <line x1="10" y1="65" x2="8" y2="105" stroke="#78350f" stroke-width="4" stroke-linecap="round"/>
+                <line x1="35" y1="78" x2="35" y2="115" stroke="#78350f" stroke-width="4" stroke-linecap="round"/>
+                <line x1="68" y1="65" x2="70" y2="105" stroke="#78350f" stroke-width="4" stroke-linecap="round"/>
+                <text x="38" y="127" fill="#4ade80" font-size="9" text-anchor="middle" font-family="'JetBrains Mono',monospace">3D Solid Mesh</text>
+              </g>
+            </svg>
+          </div>
+          <div class="example-box-header">
+            <span class="example-name">Ergonomic Chair</span>
+            <span class="example-tag">Furniture</span>
+          </div>
+          <div class="example-prompt-preview">"A wooden chair with a red cushion"</div>
+          <p style="font-size: 13px; color: var(--mu); margin-bottom: 16px;">Highlights open-line strokes converted into structural support ribs and solid volumetric seat cushioning.</p>
+          <div class="btn-open-example">
+            <span>Test in Studio</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </div>
+        </div>
+
+        <!-- Preset 3: Car -->
+        <div class="example-box" onclick="launchWithExample('ex3')">
+          <div class="example-thumb">
+            <svg viewBox="0 0 320 160" width="100%" height="100%">
+              <defs>
+                <linearGradient id="carG" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#f43f5e"/>
+                  <stop offset="100%" stop-color="#be123c"/>
+                </linearGradient>
+              </defs>
+              <rect width="320" height="160" rx="12" fill="#180e33" />
+              <!-- Sketch side -->
+              <g transform="translate(25, 35)">
+                <path d="M10,40 L30,25 L65,25 L85,40 L95,45 L10,45 Z" fill="none" stroke="#f0abfc" stroke-width="2"/>
+                <circle cx="28" cy="46" r="12" fill="none" stroke="#a99bd0" stroke-width="2"/>
+                <circle cx="77" cy="46" r="12" fill="none" stroke="#a99bd0" stroke-width="2"/>
+                <text x="50" y="80" fill="#a99bd0" font-size="9" text-anchor="middle" font-family="'JetBrains Mono',monospace">2D Sketch</text>
+              </g>
+              <path d="M150,75 L170,75 M165,70 L170,75 L165,80" stroke="#f0abfc" stroke-width="2" stroke-linecap="round"/>
+              <!-- 3D Car -->
+              <g transform="translate(190, 30)">
+                <polygon points="10,40 35,20 75,20 100,35 105,52 0,52" fill="url(#carG)" stroke="#fb7185" stroke-width="1.5"/>
+                <polygon points="35,22 72,22 85,35 25,35" fill="#38bdf8" opacity="0.85"/>
+                <!-- Wheels -->
+                <circle cx="28" cy="55" r="13" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
+                <circle cx="28" cy="55" r="5" fill="#e2e8f0"/>
+                <circle cx="82" cy="55" r="13" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
+                <circle cx="82" cy="55" r="5" fill="#e2e8f0"/>
+                <text x="55" y="85" fill="#4ade80" font-size="9" text-anchor="middle" font-family="'JetBrains Mono',monospace">3D Solid Mesh</text>
+              </g>
+            </svg>
+          </div>
+          <div class="example-box-header">
+            <span class="example-name">Cyber Sports Car</span>
+            <span class="example-tag">Automotive</span>
+          </div>
+          <div class="example-prompt-preview">"A red car"</div>
+          <p style="font-size: 13px; color: var(--mu); margin-bottom: 16px;">Aerodynamic chassis silhouette with circular wheel geometries and streamlined cockpit glass canopy.</p>
+          <div class="btn-open-example">
+            <span>Test in Studio</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </div>
+        </div>
+
+        <!-- Preset 4: Tree -->
+        <div class="example-box" onclick="launchWithExample('ex4')">
+          <div class="example-thumb">
+            <svg viewBox="0 0 320 160" width="100%" height="100%">
+              <defs>
+                <linearGradient id="leafG" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#22c55e"/>
+                  <stop offset="100%" stop-color="#15803d"/>
+                </linearGradient>
+              </defs>
+              <rect width="320" height="160" rx="12" fill="#12182c" />
+              <!-- Sketch side -->
+              <g transform="translate(35, 20)">
+                <circle cx="45" cy="40" r="32" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-dasharray="4,3"/>
+                <rect x="38" y="70" width="14" height="35" fill="none" stroke="#a99bd0" stroke-width="2.5"/>
+                <text x="45" y="120" fill="#a99bd0" font-size="9" text-anchor="middle" font-family="'JetBrains Mono',monospace">2D Sketch</text>
+              </g>
+              <path d="M150,75 L170,75 M165,70 L170,75 L165,80" stroke="#f0abfc" stroke-width="2" stroke-linecap="round"/>
+              <!-- 3D Tree -->
+              <g transform="translate(200, 15)">
+                <!-- Canopy -->
+                <circle cx="45" cy="42" r="32" fill="url(#leafG)" filter="drop-shadow(0 4px 10px rgba(34,197,94,0.4))"/>
+                <!-- Trunk -->
+                <polygon points="36,72 54,72 57,112 33,112" fill="#78350f" stroke="#451a03" stroke-width="1.5"/>
+                <text x="45" y="128" fill="#4ade80" font-size="9" text-anchor="middle" font-family="'JetBrains Mono',monospace">3D Solid Mesh</text>
+              </g>
+            </svg>
+          </div>
+          <div class="example-box-header">
+            <span class="example-name">Organic Pine Tree</span>
+            <span class="example-tag">Environment</span>
+          </div>
+          <div class="example-prompt-preview">"A green tree with a brown trunk"</div>
+          <p style="font-size: 13px; color: var(--mu); margin-bottom: 16px;">Dual-color landscape asset featuring organic puffy crown volume and rigid, textured timber trunk.</p>
+          <div class="btn-open-example">
+            <span>Test in Studio</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </div>
+        </div>
+
+        <!-- Preset 5: Robot -->
+        <div class="example-box" onclick="launchWithExample('ex5')">
+          <div class="example-thumb">
+            <svg viewBox="0 0 320 160" width="100%" height="100%">
+              <defs>
+                <linearGradient id="mechG" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#3b82f6"/>
+                  <stop offset="100%" stop-color="#1d4ed8"/>
+                </linearGradient>
+              </defs>
+              <rect width="320" height="160" rx="12" fill="#141433" />
+              <!-- Sketch side -->
+              <g transform="translate(30, 15)">
+                <rect x="25" y="15" width="30" height="22" fill="none" stroke="#60a5fa" stroke-width="2"/>
+                <line x1="40" y1="15" x2="40" y2="5" stroke="#60a5fa" stroke-width="2"/>
+                <circle cx="40" cy="5" r="3" fill="#60a5fa"/>
+                <rect x="18" y="40" width="44" height="38" fill="none" stroke="#a99bd0" stroke-width="2"/>
+                <rect x="5" y="42" width="10" height="28" fill="none" stroke="#a99bd0" stroke-width="1.5"/>
+                <rect x="65" y="42" width="10" height="28" fill="none" stroke="#a99bd0" stroke-width="1.5"/>
+                <rect x="23" y="80" width="12" height="24" fill="none" stroke="#a99bd0" stroke-width="1.5"/>
+                <rect x="45" y="80" width="12" height="24" fill="none" stroke="#a99bd0" stroke-width="1.5"/>
+                <text x="40" y="122" fill="#a99bd0" font-size="9" text-anchor="middle" font-family="'JetBrains Mono',monospace">2D Sketch</text>
+              </g>
+              <path d="M150,75 L170,75 M165,70 L170,75 L165,80" stroke="#f0abfc" stroke-width="2" stroke-linecap="round"/>
+              <!-- 3D Robot -->
+              <g transform="translate(195, 15)">
+                <!-- Head -->
+                <polygon points="25,18 45,10 65,18 65,34 25,34" fill="url(#mechG)" stroke="#93c5fd" stroke-width="1.5"/>
+                <circle cx="45" cy="5" r="4" fill="#ef4444" filter="drop-shadow(0 0 6px #ef4444)"/>
+                <!-- Torso -->
+                <polygon points="15,40 45,30 75,40 75,75 15,75" fill="#1e40af" stroke="#60a5fa" stroke-width="1.5"/>
+                <!-- Arms -->
+                <polygon points="3,42 12,42 12,70 3,70" fill="#2563eb"/>
+                <polygon points="78,42 87,42 87,70 78,70" fill="#2563eb"/>
+                <!-- Legs -->
+                <polygon points="22,78 34,78 34,106 22,106" fill="#1e3a8a"/>
+                <polygon points="56,78 68,78 68,106 56,106" fill="#1e3a8a"/>
+                <text x="45" y="124" fill="#4ade80" font-size="9" text-anchor="middle" font-family="'JetBrains Mono',monospace">3D Solid Mesh</text>
+              </g>
+            </svg>
+          </div>
+          <div class="example-box-header">
+            <span class="example-name">Retro Mech Robot</span>
+            <span class="example-tag">Characters</span>
+          </div>
+          <div class="example-prompt-preview">"A blue robot"</div>
+          <p style="font-size: 13px; color: var(--mu); margin-bottom: 16px;">Multi-box modular humanoid composition with antenna line detail and faceted joint bevels.</p>
+          <div class="btn-open-example">
+            <span>Test in Studio</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </div>
+        </div>
+
+        <!-- Preset 6: Lamp -->
+        <div class="example-box" onclick="launchWithExample('ex6')">
+          <div class="example-thumb">
+            <svg viewBox="0 0 320 160" width="100%" height="100%">
+              <defs>
+                <linearGradient id="lampG" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#facc15"/>
+                  <stop offset="100%" stop-color="#ca8a04"/>
+                </linearGradient>
+              </defs>
+              <rect width="320" height="160" rx="12" fill="#1c1626" />
+              <!-- Sketch side -->
+              <g transform="translate(30, 20)">
+                <polygon points="25,20 65,20 75,50 15,50" fill="none" stroke="#facc15" stroke-width="2"/>
+                <rect x="42" y="50" width="6" height="35" fill="none" stroke="#a99bd0" stroke-width="2"/>
+                <polygon points="25,95 30,85 60,85 65,95" fill="none" stroke="#a99bd0" stroke-width="2"/>
+                <text x="45" y="115" fill="#a99bd0" font-size="9" text-anchor="middle" font-family="'JetBrains Mono',monospace">2D Sketch</text>
+              </g>
+              <path d="M150,75 L170,75 M165,70 L170,75 L165,80" stroke="#f0abfc" stroke-width="2" stroke-linecap="round"/>
+              <!-- 3D Lamp -->
+              <g transform="translate(195, 15)">
+                <!-- Lampshade -->
+                <polygon points="25,20 65,20 75,55 15,55" fill="url(#lampG)" filter="drop-shadow(0 0 12px rgba(250,204,21,0.5))"/>
+                <!-- Stem -->
+                <rect x="42" y="55" width="6" height="38" fill="#1e293b"/>
+                <!-- Pedestal -->
+                <polygon points="20,105 28,93 62,93 70,105" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+                <text x="45" y="125" fill="#4ade80" font-size="9" text-anchor="middle" font-family="'JetBrains Mono',monospace">3D Solid Mesh</text>
+              </g>
+            </svg>
+          </div>
+          <div class="example-box-header">
+            <span class="example-name">Art Deco Lamp</span>
+            <span class="example-tag">Industrial</span>
+          </div>
+          <div class="example-prompt-preview">"A yellow lamp with a black base"</div>
+          <p style="font-size: 13px; color: var(--mu); margin-bottom: 16px;">Trapezoidal warm luminescent lampshade, columnar stem, and weighted stability stand with high contrast.</p>
+          <div class="btn-open-example">
+            <span>Test in Studio</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- USE CASES SECTION -->
+    <section class="section" id="usecases">
+      <div class="section-header">
+        <span class="section-tag">Applications</span>
+        <h2 class="section-title">Built for Creators Across Industries</h2>
+        <p class="section-desc">From rapid ideation to educational diagrams, ShapeShifter AI bridges the gap between imagination and physical 3D forms.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feat-card">
+          <h3>Students &amp; STEM Learners</h3>
+          <p>Turn flat textbook diagrams, biological cells, and geometric proofs into tangible 3D models to inspect spatial volume and perspective depth.</p>
+        </div>
+        <div class="feat-card">
+          <h3>Teachers &amp; Educators</h3>
+          <p>Create visual 3D teaching aids and interactive classroom props directly from whiteboard sketches in seconds without complex CAD software.</p>
+        </div>
+        <div class="feat-card">
+          <h3>Indie Game Developers</h3>
+          <p>Prototype game level block-outs, organic props, and concept items rapidly, then export to OBJ for Blender, Unreal Engine, and Unity pipelines.</p>
+        </div>
+        <div class="feat-card">
+          <h3>3D Printing Hobbyists</h3>
+          <p>Turn children's drawings and hand-drawn doodles into physical printed plastic artifacts using the watertight STL direct download.</p>
+        </div>
+        <div class="feat-card">
+          <h3>Product &amp; Concept Designers</h3>
+          <p>Iterate on silhouette ergonomics, form factors, and material finishes with clients in real-time meetings without waiting for full render passes.</p>
+        </div>
+        <div class="feat-card">
+          <h3>Honest AI Roadmap</h3>
+          <p>Today powered by an instant deterministic geometry engine. Future updates will incorporate optional hybrid image-to-3D neural models (such as TripoSR) for complex back-facing surfaces.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- BOTTOM CTA BANNER -->
+    <div class="cta-banner">
+      <h2>Ready to Transform Your Sketches into 3D?</h2>
+      <p>Launch your Free Trial now with zero setup, zero credit card requirements, and full access to all export features.</p>
+      <button class="btn-trial" id="cta-btn-trial" style="padding: 16px 36px; font-size: 16px; margin: 0 auto;">
+        <span class="pulse-badge"></span>
+        <span>Enter Free Trial Studio</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+    </div>
+  </main>
+
+  <!-- ================= 3D STUDIO VIEW (FREE TRIAL) ================= -->
+  <main id="studio-view">
+    <div class="studio-header">
+      <div class="studio-title-area">
+        <button class="btn-back-home" id="btn-back-home">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>Back to Overview</span>
+        </button>
+        <div>
+          <h2 style="font-size: 20px; font-weight: 700;">Shape<span style="color:var(--pr);">Shifter</span> Studio</h2>
+          <p style="font-size: 12px; color: var(--mu);">Sketch it, describe it, spin it, and export production 3D assets.</p>
+        </div>
+      </div>
+
+      <div class="studio-badge-free">
+        <span class="pulse-badge" style="background: var(--green); box-shadow: 0 0 8px var(--green);"></span>
+        <span>Free Trial Session · Unlimited Synthesizing</span>
+      </div>
+    </div>
+
+    <!-- Step Progress Pipeline -->
+    <div class="steps-container">
+      <div class="steps" id="steps"></div>
+      <div class="progress-track"><div class="bar"><i id="pb"></i></div></div>
+    </div>
+
+    <!-- The 2-Column Core Studio Layout -->
+    <div class="grid">
+      <!-- LEFT CARD: SKETCHING & CONTROLS -->
+      <section class="card">
+        <div class="card-header-bar">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+              <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+              <path d="M2 2l7.586 7.586"></path>
+              <circle cx="11" cy="11" r="2"></circle>
+            </svg>
+            1 · Draw or upload a sketch
+          </h3>
+          <span class="card-badge">2D Input Canvas</span>
+        </div>
+
+        <div class="canvas-wrapper">
+          <canvas id="sk" width="480" height="480"></canvas>
+        </div>
+
+        <div class="row">
+          <button id="clr">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            Clear
+          </button>
+          <button id="up">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Upload sketch
+          </button>
+          <input type="file" id="file" accept="image/*" hidden>
+        </div>
+
+        <div class="examples-pills">
+          <button class="btn-pill" id="ex1">House</button>
+          <button class="btn-pill" id="ex2">Chair</button>
+          <button class="btn-pill" id="ex3">Car</button>
+          <button class="btn-pill" id="ex4">Tree</button>
+          <button class="btn-pill" id="ex5">Robot</button>
+          <button class="btn-pill" id="ex6">Lamp</button>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label" for="prompt">Text Prompt Guidance (Materials &amp; Accents)</label>
+          <input type="text" id="prompt" placeholder="Optional: e.g. A small cottage with a red roof and a wooden door">
+        </div>
+
+        <div class="params-bar">
+          <div class="param-control">
+            <div class="param-title">
+              <span>Thickness</span>
+              <span class="param-val" id="val-thick">2.4x</span>
+            </div>
+            <input type="range" id="thick" min="0.8" max="4" step="0.1" value="2.4">
+          </div>
+
+          <div class="param-control">
+            <div class="param-title">
+              <span>Smoothness</span>
+              <span class="param-val" id="val-smooth">5</span>
+            </div>
+            <input type="range" id="smooth" min="0" max="8" step="1" value="5">
+          </div>
+
+          <div class="param-control">
+            <div class="param-title">
+              <span>Style</span>
+            </div>
+            <select id="style">
+              <option value="puffy">Puffy</option>
+              <option value="flat">Flat</option>
+              <option value="sharp">Sharp</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="pr" id="gen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+            Generate 3D model
+          </button>
+        </div>
+
+        <div class="hint" id="msg">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          Draw with mouse or finger. Closed shapes become solid; lines become ribs.
+        </div>
+      </section>
+
+      <!-- RIGHT CARD: 3D PREVIEW & EXPORT -->
+      <section class="card">
+        <div class="card-header-bar">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            </svg>
+            2 · 3D preview &amp; export
+          </h3>
+          <span class="card-badge" style="color: var(--green); border-color: rgba(74, 222, 128, 0.3);">WebGL 60fps</span>
+        </div>
+
+        <div class="canvas-wrapper">
+          <canvas id="view" width="480" height="480"></canvas>
+        </div>
+
+        <div class="viewer-floating-actions">
+          <button id="rot">Auto-rotate: on</button>
+          <button id="wire">Wireframe: off</button>
+          <button id="shot">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            Save image
+          </button>
+        </div>
+
+        <div class="export-actions">
+          <button id="obj" class="btn-export" disabled>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export OBJ
+          </button>
+          <button id="stl" class="btn-export" disabled>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export STL
+          </button>
+        </div>
+
+        <div class="hint">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+          Drag to orbit · scroll or pinch to zoom.
+        </div>
+      </section>
+    </div>
+
+    <!-- Application Highlights / Tips Bar -->
+    <div class="use">
+      <div><b>Students</b>Turn flat textbook diagrams into 3D shapes and see depth and structure.</div>
+      <div><b>Teachers</b>Make visual teaching aids from sketches in seconds.</div>
+      <div><b>Beginners</b>3D modelling without technical knowledge or heavy software.</div>
+      <div><b>Innovators</b>Prototype product, furniture and architecture concepts, then export.</div>
+    </div>
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer>
+    <div class="footer-content">
+      <div class="footer-brand">
+        Shape<span>Shifter</span> AI &copy; 2026. From a 2D sketch to a production 3D asset.
+      </div>
+      <ul class="footer-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#pipeline">Architecture</a></li>
+        <li><a href="#examples">Presets</a></li>
+        <li><a href="javascript:void(0)" onclick="openStudioView()">Free Trial</a></li>
+      </ul>
+    </div>
+  </footer>
+
+</div>
+
+<!-- Three.js (r128) library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+/* ================= VIEW NAVIGATION (LANDING <-> FREE TRIAL STUDIO) ================= */
+const landingView = document.getElementById("landing-view");
+const studioView = document.getElementById("studio-view");
+const mainNavLinks = document.getElementById("main-nav-links");
+
+function openStudioView() {
+  landingView.style.display = "none";
+  studioView.style.display = "block";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (R && scene && cam) {
+    R.setSize(cv.clientWidth || 480, cv.clientHeight || 480, false);
+  }
+  history.pushState(null, "", "#trial");
+}
+
+function openLandingView() {
+  studioView.style.display = "none";
+  landingView.style.display = "block";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  history.pushState(null, "", window.location.pathname);
+}
+
+// Attach free trial buttons
+document.getElementById("btn-enter-trial").onclick = openStudioView;
+document.getElementById("hero-btn-trial").onclick = openStudioView;
+document.getElementById("cta-btn-trial").onclick = openStudioView;
+document.getElementById("btn-back-home").onclick = openLandingView;
+document.getElementById("brand-link").onclick = (e) => {
+  e.preventDefault();
+  openLandingView();
+};
+
+window.addEventListener("popstate", () => {
+  if (window.location.hash === "#trial" || window.location.hash === "#studio") {
+    openStudioView();
+  } else {
+    openLandingView();
+  }
+});
+
+// If user navigates directly with #trial in URL
+if (window.location.hash === "#trial" || window.location.hash === "#studio") {
+  openStudioView();
+}
+
+function launchWithExample(exKey) {
+  openStudioView();
+  setTimeout(() => {
+    const btn = document.getElementById(exKey);
+    if (btn) btn.click();
+    const genBtn = document.getElementById("gen");
+    if (genBtn) genBtn.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 100);
+}
+
+/* ================= CORE ORIGINAL FUNCTIONING (PRESERVED 100%) ================= */
+const $ = id => document.getElementById(id);
+const STEPS = ["Draw / Upload", "Text prompt", "AI analysis", "Image-to-3D", "Preview & Export"];
+$("steps").innerHTML = STEPS.map((s, i) => `<span class="st" id="s${i}">${i+1}. ${s}</span>`).join("");
+
+function setStep(n) {
+  STEPS.forEach((_, i) => {
+    const e = $("s" + i);
+    e.className = "st" + (i < n ? " done" : i === n ? " on" : "");
+  });
+  $("pb").style.width = Math.min(100, n * 25) + "%";
+}
+setStep(0);
+
+/* Real-time slider readout updates */
+$("thick").addEventListener("input", e => {
+  $("val-thick").textContent = parseFloat(e.target.value).toFixed(1) + "x";
+});
+$("smooth").addEventListener("input", e => {
+  $("val-smooth").textContent = e.target.value;
+});
+
+/* ---------- sketch canvas ---------- */
+const sk = $("sk"), c = sk.getContext("2d");
+function blank() {
+  c.fillStyle = "#f6f1e3";
+  c.fillRect(0, 0, 480, 480);
+}
+blank();
+
+let drawing = false, last = null;
+function pos(e) {
+  const r = sk.getBoundingClientRect();
+  return [(e.clientX - r.left) * 480 / r.width, (e.clientY - r.top) * 480 / r.height];
+}
+
+sk.addEventListener("pointerdown", e => {
+  drawing = true;
+  last = pos(e);
+  sk.setPointerCapture(e.pointerId);
+});
+
+sk.addEventListener("pointermove", e => {
+  if (!drawing) return;
+  const p = pos(e);
+  c.strokeStyle = "#1a1a1a";
+  c.lineWidth = 5;
+  c.lineCap = "round";
+  c.beginPath();
+  c.moveTo(...last);
+  c.lineTo(...p);
+  c.stroke();
+  last = p;
+});
+
+["pointerup", "pointercancel"].forEach(t => sk.addEventListener(t, () => { drawing = false; }));
+$("clr").onclick = () => {
+  blank();
+  $("msg").textContent = "Canvas cleared.";
+};
+
+function poly(pts, close) {
+  c.strokeStyle = "#1a1a1a";
+  c.lineWidth = 5;
+  c.lineJoin = "round";
+  c.beginPath();
+  pts.forEach((p, i) => i ? c.lineTo(...p) : c.moveTo(...p));
+  if (close) c.closePath();
+  c.stroke();
+}
+
+$("ex1").onclick = () => {
+  blank();
+  poly([[90, 250], [90, 410], [390, 410], [390, 250]], 0);
+  poly([[70, 260], [240, 100], [410, 260]], 1);
+  poly([[210, 410], [210, 320], [270, 320], [270, 410]], 0);
+  poly([[310, 290], [310, 340], [360, 340], [360, 290]], 1);
+  $("prompt").value = "A small cottage with a red roof and a wooden door";
+  $("msg").textContent = "Cottage preset loaded. Press Generate 3D model.";
+};
+
+$("ex2").onclick = () => {
+  blank();
+  poly([[150, 70], [150, 300], [340, 300], [340, 70]], 1);
+  poly([[130, 300], [130, 350], [360, 350], [360, 300]], 1);
+  [[140, 350, 140, 430], [350, 350, 350, 430]].forEach(l => poly([[l[0], l[1]], [l[2], l[3]]], 0));
+  $("prompt").value = "A wooden chair with a red cushion";
+  $("msg").textContent = "Chair preset loaded. Press Generate 3D model.";
+};
+
+$("up").onclick = () => $("file").click();
+$("file").onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const im = new Image();
+  im.onload = () => {
+    blank();
+    const s = Math.min(440 / im.width, 440 / im.height);
+    const w = im.width * s, h = im.height * s;
+    c.drawImage(im, (480 - w) / 2, (480 - h) / 2, w, h);
+    $("msg").textContent = "Sketch uploaded. Dark lines on a light background work best.";
+  };
+  im.src = URL.createObjectURL(f);
+};
+
+/* ---------- 3D viewer ---------- */
+const cv = $("view"), R = new THREE.WebGLRenderer({ canvas: cv, antialias: true, preserveDrawingBuffer: true });
+R.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+R.setSize(480, 480, false);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d0719);
+
+const cam = new THREE.PerspectiveCamera(40, 1, 0.1, 500);
+cam.position.set(0, 0, 70);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x443366, 0.9));
+const dl = new THREE.DirectionalLight(0xffffff, 0.9);
+dl.position.set(30, 50, 60);
+scene.add(dl);
+
+const rim = new THREE.DirectionalLight(0xb28cff, 0.7);
+rim.position.set(-40, 20, -50);
+scene.add(rim);
+
+const grid = new THREE.GridHelper(80, 16, 0x5b3fa8, 0x2a1a52);
+grid.position.y = -20;
+scene.add(grid);
+
+const pivot = new THREE.Group();
+scene.add(pivot);
+
+let auto = true, zoom = 70, cells = [];
+$("rot").onclick = () => {
+  auto = !auto;
+  $("rot").textContent = "Auto-rotate: " + (auto ? "on" : "off");
+};
+
+let drag = null;
+cv.addEventListener("pointerdown", e => {
+  drag = [e.clientX, e.clientY];
+  auto = false;
+  $("rot").textContent = "Auto-rotate: off";
+  cv.setPointerCapture(e.pointerId);
+  cv.style.cursor = "grabbing";
+});
+
+cv.addEventListener("pointermove", e => {
+  if (!drag) return;
+  pivot.rotation.y += (e.clientX - drag[0]) * 0.01;
+  pivot.rotation.x = Math.max(-1.4, Math.min(1.4, pivot.rotation.x + (e.clientY - drag[1]) * 0.01));
+  drag = [e.clientX, e.clientY];
+});
+
+["pointerup", "pointercancel"].forEach(t => cv.addEventListener(t, () => {
+  drag = null;
+  cv.style.cursor = "grab";
+}));
+
+cv.addEventListener("wheel", e => {
+  e.preventDefault();
+  zoom = Math.max(25, Math.min(140, zoom + e.deltaY * 0.05));
+}, { passive: false });
+
+let pinch = null;
+cv.addEventListener("touchmove", e => {
+  if (e.touches.length === 2) {
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    if (pinch) zoom = Math.max(25, Math.min(140, zoom - (d - pinch) * 0.2));
+    pinch = d;
+  }
+}, { passive: true });
+cv.addEventListener("touchend", () => pinch = null);
+
+(function loop() {
+  requestAnimationFrame(loop);
+  if (auto) pivot.rotation.y += 0.008;
+  cam.position.z += (zoom - cam.position.z) * 0.15;
+  R.render(scene, cam);
+})();
+
+/* ---------- prompt -> colours ---------- */
+const COL = {
+  red: "#d93030", blue: "#2f6fe0", green: "#2fa550", yellow: "#f2c230",
+  orange: "#f08a24", purple: "#8b5cf6", pink: "#ec6fb0", white: "#f2f2f2",
+  black: "#2b2b2b", grey: "#8a8a99", gray: "#8a8a99", gold: "#e0b030",
+  silver: "#c4c8d0", wooden: "#8a5a2b", wood: "#8a5a2b", brown: "#7a4a22",
+  brick: "#a8452f", stone: "#9a9aa0", metal: "#aeb4c0", glass: "#9fd8ee"
+};
+
+function parsePrompt(t) {
+  const w = t.toLowerCase().match(/[a-z]+/g) || [];
+  const f = w.filter(x => COL[x]).map(x => COL[x]);
+  return {
+    main: f[f.length > 1 ? 1 : 0] || "#8b7bd8",
+    accent: f.length > 1 ? f[0] : null,
+    hasRoof: /roof|hat|cap|top/.test(t.toLowerCase())
+  };
+}
+
+/* ---------- sketch -> 3D (client-side image-to-3D) ---------- */
+const N = 128;
+function analyse() {
+  const d = c.getImageData(0, 0, 480, 480).data, s = 480 / N;
+  let g = new Uint8Array(N * N);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      let dark = 0;
+      for (let j = 0; j < s; j += 2) {
+        for (let i = 0; i < s; i += 2) {
+          const k = ((Math.floor(y * s + j)) * 480 + Math.floor(x * s + i)) * 4;
+          if ((d[k] + d[k + 1] + d[k + 2]) / 3 < 120) dark++;
+        }
+      }
+      g[y * N + x] = dark >= 2 ? 1 : 0;
+    }
+  }
+
+  const dil = new Uint8Array(g);
+  for (let y = 1; y < N - 1; y++) {
+    for (let x = 1; x < N - 1; x++) {
+      if (g[y * N + x]) {
+        for (const o of [-1, 1, -N, N]) dil[y * N + x + o] = 1;
+      }
+    }
+  }
+
+  const ext = new Uint8Array(N * N), q = [];
+  const push = i => {
+    if (!dil[i] && !ext[i]) {
+      ext[i] = 1;
+      q.push(i);
+    }
+  };
+
+  for (let i = 0; i < N; i++) {
+    push(i);
+    push((N - 1) * N + i);
+    push(i * N);
+    push(i * N + N - 1);
+  }
+
+  while (q.length) {
+    const i = q.pop(), x = i % N;
+    if (x > 0) push(i - 1);
+    if (x < N - 1) push(i + 1);
+    if (i >= N) push(i - N);
+    if (i < N * (N - 1)) push(i + N);
+  }
+
+  const solid = new Uint8Array(N * N);
+  let n = 0;
+  for (let i = 0; i < N * N; i++) {
+    if (!ext[i]) {
+      solid[i] = 1;
+      n++;
+    }
+  }
+
+  if (n < 8) return null;
+
+  const dist = new Int16Array(N * N).fill(-1), qq = [];
+  for (let i = 0; i < N * N; i++) {
+    if (!solid[i]) {
+      dist[i] = 0;
+      qq.push(i);
+    }
+  }
+
+  for (let h = 0; h < qq.length; h++) {
+    const i = qq[h], x = i % N;
+    for (const [o, ok] of [[-1, x > 0], [1, x < N - 1], [-N, i >= N], [N, i < N * (N - 1)]]) {
+      if (ok && dist[i + o] < 0) {
+        dist[i + o] = dist[i] + 1;
+        qq.push(i + o);
+      }
+    }
+  }
+
+  return { solid, dist, line: dil, g };
+}
+
+/* ---------- v2 & v3: smooth, rounded, solid 3D mesh ---------- */
+let mesh3 = null;
+let wire = false, lastA = null, lastPP = null;
+
+function build(a, pp) {
+  while (pivot.children.length) pivot.remove(pivot.children[0]);
+  lastA = a;
+  lastPP = pp;
+  const S = a.solid;
+  let x0 = N, x1 = 0, y0 = N, y1 = 0;
+  for (let i = 0; i < N * N; i++) {
+    if (S[i]) {
+      const x = i % N, y = (i / N) | 0;
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    }
+  }
+  const span = Math.max(x1 - x0, y1 - y0) + 1, sc = 40 / span, cx = (x0 + x1 + 1) / 2, cy = (y0 + y1 + 1) / 2;
+  let h = new Float32Array(N * N);
+  for (let i = 0; i < N * N; i++) {
+    if (S[i]) {
+      h[i] = $("style").value === "flat"
+        ? 1.8 + (a.g[i] ? 0.5 : 0)
+        : $("style").value === "sharp"
+        ? 0.3 + Math.min(a.dist[i], 16) * 0.55
+        : 0.3 + Math.sqrt(Math.min(a.dist[i], 16)) * 1.15 + (a.g[i] ? 0.5 : 0);
+    }
+  }
+
+  for (let p = 0; p < +$("smooth").value; p++) {
+    const nh = new Float32Array(N * N);
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < N; x++) {
+        const i = y * N + x;
+        if (!S[i]) continue;
+        let s = 0, n = 0;
+        for (let j = -1; j <= 1; j++) {
+          for (let k = -1; k <= 1; k++) {
+            const xx = x + k, yy = y + j;
+            if (xx < 0 || yy < 0 || xx >= N || yy >= N) continue;
+            const q = yy * N + xx;
+            if (S[q]) {
+              s += h[q];
+              n++;
+            }
+          }
+        }
+        nh[i] = s / n;
+      }
+    }
+    h = nh;
+  }
+
+  const V = N + 1, M = V * V, K = +$("thick").value, pos = new Float32Array(M * 6), col = new Float32Array(M * 6);
+  const cm = new THREE.Color(pp.main), ca = new THREE.Color(pp.accent || pp.main), c2 = new THREE.Color();
+  for (let vy = 0; vy < V; vy++) {
+    for (let vx = 0; vx < V; vx++) {
+      let s = 0, n = 0, ln = 0;
+      for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
+        const x = vx + dx, y = vy + dy;
+        if (x < 0 || y < 0 || x >= N || y >= N) continue;
+        const q = y * N + x;
+        if (S[q]) {
+          s += h[q];
+          ln += a.g[q];
+          n++;
+        }
+      }
+      const hv = n ? s / n : 0, i = vy * V + vx, fy = 1 - (vy - y0) / Math.max(1, y1 - y0 + 1);
+      c2.copy(pp.accent && fy > 0.62 ? ca : cm);
+      if (n && ln / n > 0.5) c2.multiplyScalar(0.78);
+      c2.multiplyScalar(0.7 + 0.3 * Math.min(1, hv / 5));
+      const X = (vx - cx) * sc, Y = -(vy - cy) * sc, Z = hv * sc * K;
+      pos.set([X, Y, Z], i * 3);
+      pos.set([X, Y, -Z], (i + M) * 3);
+      col.set([c2.r, c2.g, c2.b], i * 3);
+      col.set([c2.r * 0.85, c2.g * 0.85, c2.b * 0.85], (i + M) * 3);
+    }
+  }
+
+  const idx = [];
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      if (!S[y * N + x]) continue;
+      const A = y * V + x, B = A + 1, C = A + V, D = C + 1;
+      idx.push(A, C, B, B, C, D, A + M, B + M, C + M, B + M, D + M, C + M);
+      const W = (p, q) => idx.push(p, q + M, q, p, p + M, q + M);
+      if (x === 0 || !S[y * N + x - 1]) W(A, C);
+      if (x === N - 1 || !S[y * N + x + 1]) W(D, B);
+      if (y === 0 || !S[(y - 1) * N + x]) W(B, A);
+      if (y === N - 1 || !S[(y + 1) * N + x]) W(C, D);
+    }
+  }
+
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+
+  mesh3 = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.42,
+    metalness: 0.08,
+    side: THREE.DoubleSide
+  }));
+  mesh3.material.wireframe = wire;
+  pivot.add(mesh3);
+
+  const ow = new THREE.LineSegments(new THREE.WireframeGeometry(g), new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.035
+  }));
+  pivot.add(ow);
+
+  pivot.rotation.set(-0.22, 0.6, 0);
+  grid.position.y = -(y1 - y0 + 1) * sc / 2 - 3;
+  cells = null;
+}
+
+function meshTris() {
+  const g = mesh3.geometry, p = g.attributes.position, c = g.attributes.color, ix = g.index.array;
+  return { p, c, ix };
+}
+
+/* ---------- generate (animated 5-step pipeline) ---------- */
+const wait = ms => new Promise(r => setTimeout(r, ms));
+$("gen").onclick = async () => {
+  const b = $("gen");
+  b.disabled = true;
+  $("obj").disabled = $("stl").disabled = true;
+  
+  setStep(1);
+  $("msg").textContent = "Reading your text prompt…";
+  await wait(450);
+
+  const pp = parsePrompt($("prompt").value);
+  setStep(2);
+  $("msg").textContent = "Analysing sketch shapes…";
+  await wait(700);
+
+  const a = analyse();
+  if (!a) {
+    setStep(0);
+    $("msg").textContent = "I couldn't find a shape. Draw a bigger sketch with dark lines.";
+    b.disabled = false;
+    return;
+  }
+
+  setStep(3);
+  $("msg").textContent = "Image-to-3D reconstruction: geometry and surface colour…";
+  await wait(700);
+
+  build(a, pp);
+  auto = true;
+  $("rot").textContent = "Auto-rotate: on";
+
+  setStep(4);
+  $("pb").style.width = "100%";
+  $("msg").textContent = "Done! Orbit your model and export it for Blender, Tinkercad or a 3D printer.";
+  b.disabled = false;
+  $("obj").disabled = $("stl").disabled = false;
+};
+
+/* ---------- export ---------- */
+function save(name, txt) {
+  const u = URL.createObjectURL(new Blob([txt], { type: "text/plain" }));
+  const a = document.createElement("a");
+  a.href = u;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 2000);
+}
+
+$("obj").onclick = () => {
+  if (!mesh3) return;
+  const { p, c, ix } = meshTris();
+  const used = new Map();
+  let o = "# ShapeShifter AI export\n", n = 0;
+  const id = i => {
+    if (!used.has(i)) {
+      used.set(i, ++n);
+      o += `v ${p.getX(i).toFixed(3)} ${p.getY(i).toFixed(3)} ${p.getZ(i).toFixed(3)} ${c.getX(i).toFixed(3)} ${c.getY(i).toFixed(3)} ${c.getZ(i).toFixed(3)}\n`;
+    }
+    return used.get(i);
+  };
+  let f = "";
+  for (let t = 0; t < ix.length; t += 3) {
+    f += `f ${id(ix[t])} ${id(ix[t + 1])} ${id(ix[t + 2])}\n`;
+  }
+  save("shapeshifter-model.obj", o + f);
+};
+
+$("stl").onclick = () => {
+  if (!mesh3) return;
+  const { p, ix } = meshTris();
+  let o = "solid shapeshifter\n";
+  for (let t = 0; t < ix.length; t += 3) {
+    o += "facet normal 0 0 0\nouter loop\n";
+    for (let k = 0; k < 3; k++) {
+      const i = ix[t + k];
+      o += `vertex ${p.getX(i).toFixed(3)} ${p.getY(i).toFixed(3)} ${p.getZ(i).toFixed(3)}\n`;
+    }
+    o += "endloop\nendfacet\n";
+  }
+  save("shapeshifter-model.stl", o + "endsolid shapeshifter\n");
+};
+
+/* ---------- presets & controls ---------- */
+function circ(x, y, r) {
+  c.strokeStyle = "#1a1a1a";
+  c.lineWidth = 5;
+  c.beginPath();
+  c.arc(x, y, r, 0, 7);
+  c.stroke();
+}
+
+function bx(x, y, w, h) {
+  poly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], 1);
+}
+
+const EX = {
+  ex3: ["A red car", () => {
+    poly([[60, 320], [60, 270], [140, 260], [190, 200], [330, 200], [390, 260], [430, 270], [430, 320]], 1);
+    circ(150, 330, 38);
+    circ(350, 330, 38);
+    poly([[205, 215], [205, 260], [315, 260], [315, 215]], 1);
+  }],
+  ex4: ["A green tree with a brown trunk", () => {
+    poly([[215, 440], [215, 290], [265, 290], [265, 440]], 1);
+    circ(240, 200, 115);
+  }],
+  ex5: ["A blue robot", () => {
+    bx(175, 70, 130, 90);
+    bx(145, 180, 190, 170);
+    bx(95, 185, 40, 140);
+    bx(345, 185, 40, 140);
+    bx(170, 360, 55, 90);
+    bx(255, 360, 55, 90);
+    poly([[240, 70], [240, 35]], 0);
+    circ(240, 28, 9);
+  }],
+  ex6: ["A yellow lamp with a black base", () => {
+    poly([[160, 110], [320, 110], [380, 250], [100, 250]], 1);
+    bx(228, 250, 24, 150);
+    poly([[150, 440], [170, 400], [310, 400], [330, 440]], 1);
+  }]
+};
+
+Object.keys(EX).forEach(k => {
+  $(k).onclick = () => {
+    blank();
+    EX[k][1]();
+    $("prompt").value = EX[k][0];
+    $("msg").textContent = "Example loaded. Press Generate 3D model.";
+  };
+});
+
+["thick", "smooth", "style"].forEach(id => {
+  $(id).addEventListener("input", () => {
+    if (!lastA) return;
+    const r = pivot.rotation.clone();
+    build(lastA, lastPP);
+    pivot.rotation.copy(r);
+  });
+});
+
+$("wire").onclick = () => {
+  wire = !wire;
+  if (mesh3) mesh3.material.wireframe = wire;
+  $("wire").textContent = "Wireframe: " + (wire ? "on" : "off");
+};
+
+$("shot").onclick = () => {
+  R.render(scene, cam);
+  const a = document.createElement("a");
+  a.href = cv.toDataURL("image/png");
+  a.download = "shapeshifter-3d.png";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+};
+</script>
+</body>
+</html>
